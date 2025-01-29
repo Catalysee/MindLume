@@ -4,7 +4,7 @@
   "background_color": "#bea993",
   "short_name": "MindLume",
   "id": "com.catalysee.mindlume",
-  "description": "MindLume is a simple yet powerful meditation and breathing app available in both English and Lithuanian...",
+  "description": "MindLume is a simple yet powerful meditation and breathing app available in both English and Lithuanian. It helps calm your mind and spark positive thoughts with 2-minute timers and beautifully crafted visual affirmations by Catalysee. Each session features stunning background visuals that change randomly with new affirmations. Take just 2 minutes a day to transform your mindset and set a positive tone for your entire day. Download MindLume today and experience the same powerful app in your preferred language!; MindLume – tai paprasta, tačiau galinga meditacijos ir kvėpavimo programa, prieinama tiek anglų, tiek lietuvių kalbomis. Ji padeda nuraminti mintis ir sukelti teigiamas emocijas vos per 2 minutes. Tai padės atlikti nuostabūs vaizdai ir pozityvūs sakiniai, kuriuos parengė Catalysee. Skirkite tik 2 minutes per dieną, kad pakeistumėte savo mąstymą ir sukurtumėte teigiamą toną visai dienai. Atsisiųskite MindLume šiandien ir patirkite šią galingą programą savo pasirinkta kalba!",
   "categories": [
     "fitness",
     "health",
@@ -172,5 +172,8 @@
       "type": "image/png"
     }
   ],
-  "start_url": "/index.html"
+  "start_url": "/index.html",
+  "lang": "en",
+  "display": "fullscreen",
+  "orientation": "portrait-primary"
 }
