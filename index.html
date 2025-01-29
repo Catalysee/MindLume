@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meditation App</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Video Element -->
+  <video id="background-video" class="background-video" muted loop></video>
+
+  <!-- Gradient Background -->
+  <div id="gradient-background" class="gradient-background"></div>
+
+  <div class="container">
+    <h1 id="shake-message" class="shake-message">Shake your phone to receive a new message.<br>Papurtykite telefoną - išvysite naują žinutę.</h1>
+    <h1 class="message"></h1>
+    <div id="timer"></div>
+    <div class="controls">
+      <button id="begin-button">Begin</button>
+      <button id="pradeti-button">Pradėti</button>
+      <button id="more-button" class="hidden">More</button>
+      <button id="repeat-button" class="hidden">Repeat</button>
+      <button id="new-button" class="hidden">New</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
