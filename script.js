@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "I am grateful for the opportunity to grow and contribute daily.",
       "I am dedicated to living fully and leaving a positive legacy.",
       "Challenges strengthen me, and I honor the growth they bring.",
-      "I flow with life’s rhythm and trust its guidance.",
+      "I flow with life's rhythm and trust its guidance.",
       "I replace fear with love in all that I do.",
       "I welcome miracles into my life.",
       "I practice forgiveness, creating space for inner peace.",
@@ -115,11 +115,11 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const videos = [
-    "https://www.dropbox.com/scl/fi/6jn4jqfgg0fg9ihj7a06x/breathe_01.mp4?rlkey=8s358ygma9ny9udijd6je0vqk&st=nogsp164&dl=1", // Updated link
-    "https://www.dropbox.com/scl/fi/0pbvt69v86iofcczyzz9b/breathe_06L.mp4?rlkey=6dw3dhbt3ee1ypd7c9phwek2t&st=0tlqeimw&dl=1", // Updated link
-    "https://www.dropbox.com/scl/fi/nbehf590cmcmsv96c5byj/breathe_07L.mp4?rlkey=j5grndy15usou0vqy26wmbjg9&st=2udp56kr&dl=1", // Updated link
-    "https://www.dropbox.com/scl/fi/dn0pznq13e0zvmgv77v29/breathe_02L.mp4?rlkey=19aoegabzo4hcv0ma58r7cm8b&st=xlqu66vl&dl=1", // Updated link
-    "https://www.dropbox.com/scl/fi/lsmyb2y3tp1jnpo4eyxn9/breathe_08L.mp4?rlkey=i5jy5tu1yigbzrd1mp1za2z77&st=rlx1anfm&dl=1", // Updated link
+    "https://www.dropbox.com/scl/fi/6jn4jqfgg0fg9ihj7a06x/breathe_01.mp4?rlkey=8s358ygma9ny9udijd6je0vqk&st=nogsp164&dl=1",
+    "https://www.dropbox.com/scl/fi/0pbvt69v86iofcczyzz9b/breathe_06L.mp4?rlkey=6dw3dhbt3ee1ypd7c9phwek2t&st=0tlqeimw&dl=1",
+    "https://www.dropbox.com/scl/fi/nbehf590cmcmsv96c5byj/breathe_07L.mp4?rlkey=j5grndy15usou0vqy26wmbjg9&st=2udp56kr&dl=1",
+    "https://www.dropbox.com/scl/fi/dn0pznq13e0zvmgv77v29/breathe_02L.mp4?rlkey=19aoegabzo4hcv0ma58r7cm8b&st=xlqu66vl&dl=1",
+    "https://www.dropbox.com/scl/fi/lsmyb2y3tp1jnpo4eyxn9/breathe_08L.mp4?rlkey=i5jy5tu1yigbzrd1mp1za2z77&st=rlx1anfm&dl=1",
   ];
 
   let countdown;
@@ -130,11 +130,33 @@ document.addEventListener("DOMContentLoaded", () => {
   const updateContent = () => {
     currentVideo = videos[Math.floor(Math.random() * videos.length)];
     currentMessage = messages[language][Math.floor(Math.random() * messages[language].length)];
+    
+    // Prevent video controls and ensure full-screen background
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+    video.style.objectFit = 'cover';
+    video.style.width = '100%';
+    video.style.height = '100%';
+    video.style.position = 'fixed';
+    video.style.top = '0';
+    video.style.left = '0';
+    video.style.zIndex = '-1';
+    
+    // Explicitly disable controls for multiple browser types
+    video.removeAttribute('controls');
+    video.disableRemotePlayback = true;
+    video.controlsList = 'nodownload noplaybackrate';
+    
     video.src = currentVideo;
     video.style.display = "block";
     gradientBackground.style.opacity = "0";
     message.textContent = currentMessage;
-    video.play();
+    
+    // Attempt to play video with fallback
+    video.play().catch(e => {
+      console.warn("Autoplay was prevented:", e);
+      // Optional: Add a user interaction listener if needed
+    });
   };
 
   const startTimer = (minutes) => {
