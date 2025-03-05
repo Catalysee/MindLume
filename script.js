@@ -122,42 +122,93 @@ document.addEventListener("DOMContentLoaded", () => {
     "https://www.dropbox.com/scl/fi/lsmyb2y3tp1jnpo4eyxn9/breathe_08L.mp4?rlkey=i5jy5tu1yigbzrd1mp1za2z77&st=rlx1anfm&dl=1",
   ];
 
+  const CACHE_NAME = 'meditation-videos-cache-v1';
+
+  async function cacheVideos() {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      
+      const cachedRequests = await cache.keys();
+      if (cachedRequests.length >= videos.length) {
+        console.log('Videos already cached');
+        return;
+      }
+
+      shakeMessage.textContent = 'Downloading meditation videos... Please wait.';
+      
+      const cachePromises = videos.map(async (videoUrl) => {
+        try {
+          const response = await fetch(videoUrl);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch ${videoUrl}`);
+          }
+          await cache.put(videoUrl, response);
+          console.log(`Cached: ${videoUrl}`);
+        } catch (error) {
+          console.error(`Error caching video ${videoUrl}:`, error);
+        }
+      });
+
+      await Promise.all(cachePromises);
+      
+      shakeMessage.textContent = 'Shake your phone to receive a new message.\nPapurtykite telefoną - išvysite naują žinutę.';
+    } catch (error) {
+      console.error('Video caching error:', error);
+      shakeMessage.textContent = 'Error downloading videos. Please check your connection.';
+    }
+  }
+
   let countdown;
   let currentMessage = "";
   let currentVideo = "";
   let language = "default";
 
-  const updateContent = () => {
-    currentVideo = videos[Math.floor(Math.random() * videos.length)];
-    currentMessage = messages[language][Math.floor(Math.random() * messages[language].length)];
-    
-    // Prevent video controls and ensure full-screen background
-    video.setAttribute('playsinline', '');
-    video.setAttribute('webkit-playsinline', '');
-    video.style.objectFit = 'cover';
-    video.style.width = '100%';
-    video.style.height = '100%';
-    video.style.position = 'fixed';
-    video.style.top = '0';
-    video.style.left = '0';
-    video.style.zIndex = '-1';
-    
-    // Explicitly disable controls for multiple browser types
-    video.removeAttribute('controls');
-    video.disableRemotePlayback = true;
-    video.controlsList = 'nodownload noplaybackrate';
-    
-    video.src = currentVideo;
-    video.style.display = "block";
-    gradientBackground.style.opacity = "0";
-    message.textContent = currentMessage;
-    
-    // Attempt to play video with fallback
-    video.play().catch(e => {
-      console.warn("Autoplay was prevented:", e);
-      // Optional: Add a user interaction listener if needed
-    });
+  const updateContent = async () => {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      const selectedVideo = videos[Math.floor(Math.random() * videos.length)];
+      
+      let videoSrc;
+      const cachedResponse = await cache.match(selectedVideo);
+      
+      if (cachedResponse) {
+        const videoBlob = await cachedResponse.blob();
+        videoSrc = URL.createObjectURL(videoBlob);
+      } else {
+        videoSrc = selectedVideo;
+      }
+
+      currentVideo = videoSrc;
+      currentMessage = messages[language][Math.floor(Math.random() * messages[language].length)];
+      
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      video.style.objectFit = 'cover';
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.position = 'fixed';
+      video.style.top = '0';
+      video.style.left = '0';
+      video.style.zIndex = '-1';
+      
+      video.removeAttribute('controls');
+      video.disableRemotePlayback = true;
+      video.controlsList = 'nodownload noplaybackrate';
+      
+      video.src = currentVideo;
+      video.style.display = "block";
+      gradientBackground.style.opacity = "0";
+      message.textContent = currentMessage;
+      
+      video.play().catch(e => {
+        console.warn("Autoplay was prevented:", e);
+      });
+    } catch (error) {
+      console.error('Error updating content:', error);
+    }
   };
+
+  cacheVideos();
 
   const startTimer = (minutes) => {
     clearInterval(countdown);
