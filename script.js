@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const shakeMessage = document.getElementById("shake-message");
   const video = document.getElementById("background-video");
   const gradientBackground = document.getElementById("gradient-background");
+  const loadingScreen = document.getElementById("loading-screen");
   const beginButton = document.getElementById("begin-button");
   const pradetiButton = document.getElementById("pradeti-button");
   const moreButton = document.getElementById("more-button");
@@ -129,20 +130,30 @@ document.addEventListener("DOMContentLoaded", () => {
       const cache = await caches.open(CACHE_NAME);
       
       const cachedRequests = await cache.keys();
-      if (cachedRequests.length >= videos.length) {
-        console.log('Videos already cached');
+      const cachedUrls = cachedRequests.map(request => request.url);
+      
+      // Check which videos need to be cached
+      const videosToCache = videos.filter(videoUrl => !cachedUrls.some(url => url === videoUrl));
+      
+      if (videosToCache.length === 0) {
+        console.log('All videos already cached');
         return;
       }
 
       shakeMessage.textContent = 'Downloading meditation videos... Please wait.';
       
-      const cachePromises = videos.map(async (videoUrl) => {
+      const cachePromises = videosToCache.map(async (videoUrl) => {
         try {
-          const response = await fetch(videoUrl);
+          const response = await fetch(videoUrl, { 
+            mode: 'cors',
+            credentials: 'omit'
+          });
+          
           if (!response.ok) {
             throw new Error(`Failed to fetch ${videoUrl}`);
           }
-          await cache.put(videoUrl, response);
+          
+          await cache.put(videoUrl, response.clone());
           console.log(`Cached: ${videoUrl}`);
         } catch (error) {
           console.error(`Error caching video ${videoUrl}:`, error);
@@ -165,49 +176,86 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const updateContent = async () => {
     try {
+      // Show loading screen while video is loading
+      loadingScreen.style.display = "block";
+      
       const cache = await caches.open(CACHE_NAME);
       const selectedVideo = videos[Math.floor(Math.random() * videos.length)];
       
       let videoSrc;
-      const cachedResponse = await cache.match(selectedVideo);
+      let cachedResponse = await cache.match(selectedVideo);
+      
+      if (!cachedResponse) {
+        // If not in cache, try to fetch and cache it
+        try {
+          const response = await fetch(selectedVideo, { 
+            mode: 'cors',
+            credentials: 'omit'
+          });
+          
+          if (response.ok) {
+            await cache.put(selectedVideo, response.clone());
+            cachedResponse = response;
+          } else {
+            throw new Error(`Failed to fetch video: ${selectedVideo}`);
+          }
+        } catch (error) {
+          console.error('Error fetching video:', error);
+        }
+      }
       
       if (cachedResponse) {
-        const videoBlob = await cachedResponse.blob();
+        const videoBlob = await cachedResponse.clone().blob();
         videoSrc = URL.createObjectURL(videoBlob);
       } else {
+        // Fallback to direct URL if caching fails
         videoSrc = selectedVideo;
       }
 
       currentVideo = videoSrc;
       currentMessage = messages[language][Math.floor(Math.random() * messages[language].length)];
       
-      video.setAttribute('playsinline', '');
-      video.setAttribute('webkit-playsinline', '');
-      video.style.objectFit = 'cover';
-      video.style.width = '100%';
-      video.style.height = '100%';
-      video.style.position = 'fixed';
-      video.style.top = '0';
-      video.style.left = '0';
-      video.style.zIndex = '-1';
-      
-      video.removeAttribute('controls');
-      video.disableRemotePlayback = true;
-      video.controlsList = 'nodownload noplaybackrate';
-      
-      video.src = currentVideo;
-      video.style.display = "block";
-      gradientBackground.style.opacity = "0";
-      message.textContent = currentMessage;
-      
-      video.play().catch(e => {
-        console.warn("Autoplay was prevented:", e);
+      // Prepare video element before setting source
+      video.addEventListener('loadeddata', function onVideoLoaded() {
+        loadingScreen.style.display = "none";
+        video.style.display = "block";
+        gradientBackground.style.opacity = "0";
+        message.textContent = currentMessage;
+        
+        video.removeEventListener('loadeddata', onVideoLoaded);
+        
+        video.play().catch(e => {
+          console.warn("Autoplay was prevented:", e);
+          // If autoplay fails, show play button that matches design
+          const playButton = document.createElement('button');
+          playButton.innerText = "▶";
+          playButton.className = "play-button";
+          document.body.appendChild(playButton);
+          
+          playButton.addEventListener('click', () => {
+            video.play();
+            playButton.remove();
+          });
+        });
       });
+      
+      video.addEventListener('error', () => {
+        console.error('Video loading error');
+        loadingScreen.style.display = "none";
+        gradientBackground.style.opacity = "1";
+      });
+      
+      // Set video source after setting up event listeners
+      video.src = currentVideo;
+      
     } catch (error) {
       console.error('Error updating content:', error);
+      loadingScreen.style.display = "none";
+      gradientBackground.style.opacity = "1";
     }
   };
 
+  // Initial attempt to cache videos
   cacheVideos();
 
   const startTimer = (minutes) => {
@@ -312,4 +360,10 @@ document.addEventListener("DOMContentLoaded", () => {
   moreButton.addEventListener("click", updateContent);
   repeatButton.addEventListener("click", repeatSession);
   newButton.addEventListener("click", newSession);
+
+  // Check network status and update cache when online
+  window.addEventListener('online', () => {
+    console.log('App is online, updating cache');
+    cacheVideos();
+  });
 });
