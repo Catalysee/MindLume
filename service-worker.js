@@ -1,12 +1,14 @@
-const CACHE_NAME = 'meditation-app-cache-v3';
-const VIDEOS_CACHE_NAME = 'meditation-videos-cache-v1';
+const CACHE_NAME = 'meditation-app-cache-v4';
+const VIDEOS_CACHE_NAME = 'meditation-videos-cache-v2';
 
 const urlsToCache = [
   './',
   './index.html',
   './styles.css',
   './script.js',
-  './manifest.json'
+  './manifest.json',
+  // Add paths to any critical assets
+  './assets/icons/android/android-launchericon-192-192.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -14,7 +16,10 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Caching app shell');
-        return cache.addAll(urlsToCache);
+        return cache.addAll(urlsToCache)
+          .catch(error => {
+            console.error('Caching failed:', error);
+          });
       })
       .then(() => self.skipWaiting())
   );
@@ -38,71 +43,39 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  
-  // Skip cross-origin requests
-  if (url.origin !== self.location.origin && !event.request.url.includes('dropbox.com')) {
-    return;
-  }
-  
-  // For dropbox video requests
-  if (event.request.url.includes('dropbox.com')) {
-    event.respondWith(
-      caches.open(VIDEOS_CACHE_NAME)
-        .then((cache) => {
-          return cache.match(event.request.url)
-            .then((cachedResponse) => {
-              if (cachedResponse) {
-                return cachedResponse;
-              }
-              
-              // If not in cache and online, fetch and cache
-              return fetch(event.request)
-                .then((networkResponse) => {
-                  if (networkResponse.ok) {
-                    cache.put(event.request.url, networkResponse.clone());
-                  }
-                  return networkResponse;
-                })
-                .catch(() => {
-                  // If offline and not in cache, return a fallback
-                  console.log('Failed to fetch video and no cache available');
-                });
-            });
-        })
-    );
-    return;
-  }
-  
-  // For app shell resources
+  // More aggressive caching strategy
   event.respondWith(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.match(event.request)
-          .then((response) => {
-            // Return cached response if available
-            if (response) {
-              return response;
-            }
-            
-            // Otherwise try to fetch from network
-            return fetch(event.request)
-              .then((networkResponse) => {
-                // Cache successful responses for app resources
-                if (networkResponse.ok &&
-                    (event.request.url.endsWith('.html') ||
-                     event.request.url.endsWith('.js') ||
-                     event.request.url.endsWith('.css') ||
-                     event.request.url.endsWith('.json'))) {
-                  cache.put(event.request, networkResponse.clone());
-                }
-                return networkResponse;
-              })
-              .catch((error) => {
-                console.error('Fetch failed:', error);
-                // Return a custom offline page if needed
-              });
-          });
+    caches.match(event.request)
+      .then((response) => {
+        // Cache hit - return response
+        if (response) {
+          return response;
+        }
+
+        // IMPORTANT: Clone the request. A request is a stream and can only be consumed once
+        const fetchRequest = event.request.clone();
+
+        return fetch(fetchRequest).then((response) => {
+          // Check if we received a valid response
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+
+          // IMPORTANT: Clone the response. A response is a stream and can only be consumed once
+          const responseToCache = response.clone();
+
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+
+          return response;
+        });
       })
   );
+});
+
+// Add a message handler to help debug
+self.addEventListener('message', (event) => {
+  console.log('Service Worker received message:', event.data);
 });
