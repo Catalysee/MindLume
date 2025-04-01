@@ -2,24 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MindLume</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="manifest" href="manifest.json">
+  <!-- Add theme color for mobile browsers -->
   <meta name="theme-color" content="#bea993">
+  <!-- Add apple touch icon for iOS devices -->
   <link rel="apple-touch-icon" href="assets/icons/ios/180.png">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
-  <!-- Loading Screen -->
-  <div id="loading-screen" class="loading-screen">
-    <div class="loader">Loading...</div>
-  </div>
-
-  <!-- Video Element -->
-  <video id="background-video" class="background-video" muted loop playsinline webkit-playsinline></video>
+  <!-- Video Element with playsinline attribute -->
+  <video id="background-video" class="background-video" muted loop playsinline webkit-playsinline autoplay></video>
 
   <!-- Gradient Background -->
   <div id="gradient-background" class="gradient-background"></div>
@@ -38,25 +32,17 @@
   </div>
 
   <script>
-    // Verbose Service Worker registration
+    // Service Worker Registration with corrected path
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
+        navigator.serviceWorker.register('./service-worker.js')
           .then((registration) => {
             console.log('Service Worker registered successfully:', registration.scope);
           })
           .catch((error) => {
-            console.error('Service Worker registration failed:', error);
+            console.log('Service Worker registration failed:', error);
           });
-
-        // Add extra debugging
-        navigator.serviceWorker.ready.then((registration) => {
-          console.log('Service Worker is ready');
-          registration.active.postMessage('App is ready');
-        });
       });
-    } else {
-      console.log('Service Workers are not supported');
     }
   </script>
   <script src="script.js"></script>
