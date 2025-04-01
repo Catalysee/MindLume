@@ -1,43 +1,21 @@
-/* General Styling */
-body {
+* {
   margin: 0;
   padding: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background-color: #1a1a1a;
+  color: white;
   height: 100vh;
-  width: 100vw;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overflow: hidden;
-}
-
-/* Gradient Background */
-.gradient-background {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(120deg, #d4a373, #e5c07b);
-  z-index: -2;
-  transition: opacity 1s ease;
-}
-
-/* Loading Screen */
-.loading-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(120deg, #d4a373, #e5c07b);
-  z-index: 10;
   display: flex;
   justify-content: center;
   align-items: center;
+  text-align: center;
 }
 
-/* Video Background */
 .background-video {
   position: fixed;
   top: 0;
@@ -45,151 +23,103 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  z-index: -2;
+  /* Ensure no play button appears */
+  pointer-events: none;
+  background-color: #1a1a1a;
+}
+
+.gradient-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #bea993, #7a6653);
+  opacity: 1;
+  transition: opacity 1s ease;
   z-index: -1;
+}
+
+.container {
+  z-index: 1;
+  max-width: 90%;
+  padding: 20px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.shake-message {
+  font-size: 20px;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.message {
+  font-size: 24px;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+#timer {
+  font-size: 32px;
+  margin-bottom: 20px;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+button {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid white;
+  padding: 12px 24px;
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 30px;
+  transition: all 0.3s ease;
+  margin: 5px;
+}
+
+button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.hidden {
   display: none;
 }
 
-/* Custom Play Button (hidden by default) */
-.play-button {
+/* Loading indicator for video */
+.video-loading::before {
+  content: "Loading...";
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(120deg, #d4a373, #e5c07b);
-  border: none;
-  border-radius: 50%;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 36px;
-  cursor: pointer;
-  z-index: 5;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Content Container */
-.container {
-  position: relative;
-  text-align: center;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-/* Message Styling */
-h1.message {
-  font-size: calc(2vw + 1em);
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 20px;
-  text-transform: uppercase;
-  font-weight: 300;
-  text-align: center;
-}
-
-/* Shake Message Styling */
-h1.shake-message {
-  font-size: calc(1.5vw + 1em);
-  color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 10px;
-  text-align: center;
-  font-weight: 400;
-}
-
-/* Timer Styling */
-#timer {
-  margin-top: 15px;
-  font-size: calc(3vw + 1em);
-  color: rgba(255, 255, 255, 0.9);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-  font-weight: 300;
-}
-
-/* Button Styling */
-button {
-  padding: calc(0.5vw + 5px) calc(2vw + 10px);
-  font-size: calc(1vw + 0.5em);
-  border: 2px solid white;
-  background-color: transparent;
   color: white;
-  cursor: pointer;
-  border-radius: 50px;
-  transition: all 0.3s ease;
-  white-space: nowrap;
+  font-size: 24px;
+  z-index: 1;
 }
 
-button.hidden {
-  display: none;
-}
-
-button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-button#pradeti-button {
-  margin-top: 15px;
-}
-
-button#more-button {
-  margin-top: 10px;
-  width: auto;
-  min-width: calc(8vw + 50px);
-}
-
-button#repeat-button,
-button#new-button {
-  margin-top: 10px;
-}
-
-/* Hide default video controls (important for mobile browsers) */
-video::-webkit-media-controls {
-  display: none !important;
-}
-
-video::-webkit-media-controls-panel {
-  display: none !important;
-}
-
-video::-webkit-media-controls-play-button {
-  display: none !important;
-}
-
-video::-webkit-media-controls-overlay-play-button {
-  display: none !important;
-}
-
-/* Responsive Design */
+/* Media queries for responsiveness */
 @media (max-width: 768px) {
-  h1.message {
-    font-size: calc(1.5vw + 1em);
-  }
-
-  h1.shake-message {
-    font-size: calc(1.2vw + 1em);
-  }
-
-  #timer {
-    font-size: calc(2.5vw + 1em);
-  }
-
-  button {
-    padding: calc(0.5vw + 3px) calc(1.5vw + 5px);
-    font-size: calc(0.9vw + 0.5em);
-  }
-
-  button#more-button {
-    min-width: calc(10vw + 30px);
+  .message {
+    font-size: 20px;
   }
   
-  .play-button {
-    width: 60px;
-    height: 60px;
-    font-size: 24px;
+  #timer {
+    font-size: 28px;
+  }
+  
+  button {
+    padding: 10px 20px;
+    font-size: 16px;
   }
 }
