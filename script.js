@@ -2,7 +2,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const shakeMessage = document.getElementById("shake-message");
   const video = document.getElementById("background-video");
   const gradientBackground = document.getElementById("gradient-background");
-  const loadingScreen = document.getElementById("loading-screen");
   const beginButton = document.getElementById("begin-button");
   const pradetiButton = document.getElementById("pradeti-button");
   const moreButton = document.getElementById("more-button");
@@ -124,42 +123,151 @@ document.addEventListener("DOMContentLoaded", () => {
   ];
 
   const CACHE_NAME = 'meditation-videos-cache-v1';
+  
+  // Store video Blobs locally in IndexedDB for better offline performance
+  const DB_NAME = 'MindLumeDB';
+  const DB_VERSION = 1;
+  const STORE_NAME = 'videoStore';
+  let db;
+  
+  // Initialize IndexedDB
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      
+      request.onerror = (event) => {
+        console.error('IndexedDB error:', event.target.error);
+        reject(event.target.error);
+      };
+      
+      request.onsuccess = (event) => {
+        db = event.target.result;
+        console.log('IndexedDB initialized successfully');
+        resolve(db);
+      };
+      
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          console.log('Video store created');
+        }
+      };
+    });
+  }
+  
+  // Save video blob to IndexedDB
+  function saveVideoToIndexedDB(videoUrl, blob) {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      
+      const videoObject = {
+        id: videoUrl,
+        blob: blob,
+        timestamp: new Date().getTime()
+      };
+      
+      const request = store.put(videoObject);
+      
+      request.onsuccess = () => {
+        console.log(`Video saved to IndexedDB: ${videoUrl}`);
+        resolve();
+      };
+      
+      request.onerror = (event) => {
+        console.error(`Error saving video to IndexedDB: ${event.target.error}`);
+        reject(event.target.error);
+      };
+    });
+  }
+  
+  // Get video blob from IndexedDB
+  function getVideoFromIndexedDB(videoUrl) {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+      
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(videoUrl);
+      
+      request.onsuccess = (event) => {
+        if (event.target.result) {
+          console.log(`Video found in IndexedDB: ${videoUrl}`);
+          resolve(event.target.result.blob);
+        } else {
+          console.log(`Video not found in IndexedDB: ${videoUrl}`);
+          resolve(null);
+        }
+      };
+      
+      request.onerror = (event) => {
+        console.error(`Error getting video from IndexedDB: ${event.target.error}`);
+        reject(event.target.error);
+      };
+    });
+  }
 
   async function cacheVideos() {
     try {
-      const cache = await caches.open(CACHE_NAME);
+      await initDB();
       
-      const cachedRequests = await cache.keys();
-      const cachedUrls = cachedRequests.map(request => request.url);
+      // Check if we've already stored videos in IndexedDB
+      const allStored = await Promise.all(
+        videos.map(async (videoUrl) => {
+          const blob = await getVideoFromIndexedDB(videoUrl);
+          return !!blob;
+        })
+      );
       
-      // Check which videos need to be cached
-      const videosToCache = videos.filter(videoUrl => !cachedUrls.some(url => url === videoUrl));
-      
-      if (videosToCache.length === 0) {
-        console.log('All videos already cached');
+      if (allStored.every(Boolean)) {
+        console.log('All videos already cached in IndexedDB');
+        shakeMessage.textContent = 'Shake your phone to receive a new message.\nPapurtykite telefoną - išvysite naują žinutę.';
         return;
       }
-
+      
       shakeMessage.textContent = 'Downloading meditation videos... Please wait.';
       
-      const cachePromises = videosToCache.map(async (videoUrl) => {
+      // Open cache for network fallback
+      const cache = await caches.open(CACHE_NAME);
+      
+      const cachePromises = videos.map(async (videoUrl) => {
         try {
-          const response = await fetch(videoUrl, { 
-            mode: 'cors',
-            credentials: 'omit'
-          });
+          // Check if already in IndexedDB
+          const storedBlob = await getVideoFromIndexedDB(videoUrl);
+          if (storedBlob) {
+            return;
+          }
           
+          // Try to get from cache first
+          const cachedResponse = await cache.match(videoUrl);
+          if (cachedResponse) {
+            const blob = await cachedResponse.blob();
+            await saveVideoToIndexedDB(videoUrl, blob);
+            return;
+          }
+          
+          // If not in cache, fetch from network
+          const response = await fetch(videoUrl);
           if (!response.ok) {
             throw new Error(`Failed to fetch ${videoUrl}`);
           }
           
-          await cache.put(videoUrl, response.clone());
+          const blob = await response.clone().blob();
+          await saveVideoToIndexedDB(videoUrl, blob);
+          
+          // Also update cache
+          await cache.put(videoUrl, response);
+          
           console.log(`Cached: ${videoUrl}`);
         } catch (error) {
           console.error(`Error caching video ${videoUrl}:`, error);
         }
       });
-
+      
       await Promise.all(cachePromises);
       
       shakeMessage.textContent = 'Shake your phone to receive a new message.\nPapurtykite telefoną - išvysite naują žinutę.';
@@ -176,86 +284,111 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const updateContent = async () => {
     try {
-      // Show loading screen while video is loading
-      loadingScreen.style.display = "block";
+      // Add loading indicator to video container
+      video.style.display = "none";
+      gradientBackground.style.opacity = "1";
       
-      const cache = await caches.open(CACHE_NAME);
       const selectedVideo = videos[Math.floor(Math.random() * videos.length)];
-      
       let videoSrc;
-      let cachedResponse = await cache.match(selectedVideo);
       
-      if (!cachedResponse) {
-        // If not in cache, try to fetch and cache it
-        try {
-          const response = await fetch(selectedVideo, { 
-            mode: 'cors',
-            credentials: 'omit'
-          });
+      try {
+        // Try to get from IndexedDB first
+        const blob = await getVideoFromIndexedDB(selectedVideo);
+        if (blob) {
+          videoSrc = URL.createObjectURL(blob);
+        } else {
+          // If not in IndexedDB, try cache
+          const cache = await caches.open(CACHE_NAME);
+          const cachedResponse = await cache.match(selectedVideo);
           
-          if (response.ok) {
-            await cache.put(selectedVideo, response.clone());
-            cachedResponse = response;
+          if (cachedResponse) {
+            const videoBlob = await cachedResponse.blob();
+            await saveVideoToIndexedDB(selectedVideo, videoBlob);
+            videoSrc = URL.createObjectURL(videoBlob);
           } else {
-            throw new Error(`Failed to fetch video: ${selectedVideo}`);
+            // Last resort - fetch from network
+            const response = await fetch(selectedVideo);
+            const videoBlob = await response.blob();
+            await saveVideoToIndexedDB(selectedVideo, videoBlob);
+            videoSrc = URL.createObjectURL(videoBlob);
           }
-        } catch (error) {
-          console.error('Error fetching video:', error);
         }
-      }
-      
-      if (cachedResponse) {
-        const videoBlob = await cachedResponse.clone().blob();
-        videoSrc = URL.createObjectURL(videoBlob);
-      } else {
-        // Fallback to direct URL if caching fails
+      } catch (error) {
+        console.error('Error getting video:', error);
+        // Use the URL directly if we couldn't get the blob
         videoSrc = selectedVideo;
       }
 
       currentVideo = videoSrc;
       currentMessage = messages[language][Math.floor(Math.random() * messages[language].length)];
       
-      // Prepare video element before setting source
-      video.addEventListener('loadeddata', function onVideoLoaded() {
-        loadingScreen.style.display = "none";
-        video.style.display = "block";
-        gradientBackground.style.opacity = "0";
-        message.textContent = currentMessage;
-        
-        video.removeEventListener('loadeddata', onVideoLoaded);
-        
-        video.play().catch(e => {
-          console.warn("Autoplay was prevented:", e);
-          // If autoplay fails, show play button that matches design
-          const playButton = document.createElement('button');
-          playButton.innerText = "▶";
-          playButton.className = "play-button";
-          document.body.appendChild(playButton);
-          
-          playButton.addEventListener('click', () => {
-            video.play();
-            playButton.remove();
-          });
-        });
-      });
+      // Configure video element
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      video.setAttribute('autoplay', '');
+      video.style.objectFit = 'cover';
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.position = 'fixed';
+      video.style.top = '0';
+      video.style.left = '0';
+      video.style.zIndex = '-2';
       
-      video.addEventListener('error', () => {
-        console.error('Video loading error');
-        loadingScreen.style.display = "none";
-        gradientBackground.style.opacity = "1";
-      });
+      // Ensure no controls are displayed
+      video.removeAttribute('controls');
+      video.controls = false;
+      video.disableRemotePlayback = true;
+      if (video.controlsList) {
+        video.controlsList.add('nodownload');
+        video.controlsList.add('noplaybackrate');
+        video.controlsList.add('nofullscreen');
+      }
       
-      // Set video source after setting up event listeners
+      // Set source and start loading
       video.src = currentVideo;
+      
+      // Ensure video plays automatically
+      video.load();
+      
+      // Wait for metadata to load
+      await new Promise(resolve => {
+        video.onloadedmetadata = resolve;
+        // Add timeout in case metadata loading fails
+        setTimeout(resolve, 3000);
+      });
+      
+      // Show video and hide gradient
+      video.style.display = "block";
+      
+      // Try to play the video
+      try {
+        await video.play();
+        setTimeout(() => {
+          gradientBackground.style.opacity = "0";
+        }, 500);
+      } catch (e) {
+        console.warn("Autoplay was prevented:", e);
+        // Force a user interaction to play
+        const forcePlay = () => {
+          video.play().catch(err => console.error("Still can't play:", err));
+          document.removeEventListener('touchstart', forcePlay);
+          document.removeEventListener('click', forcePlay);
+        };
+        document.addEventListener('touchstart', forcePlay, { once: true });
+        document.addEventListener('click', forcePlay, { once: true });
+      }
+      
+      // Update message text
+      message.textContent = currentMessage;
       
     } catch (error) {
       console.error('Error updating content:', error);
-      loadingScreen.style.display = "none";
+      // Show fallback in case of error
       gradientBackground.style.opacity = "1";
+      message.textContent = currentMessage || "Take a deep breath and center yourself.";
     }
   };
 
-  // Initial attempt to cache videos
   cacheVideos();
 
   const startTimer = (minutes) => {
@@ -360,10 +493,12 @@ document.addEventListener("DOMContentLoaded", () => {
   moreButton.addEventListener("click", updateContent);
   repeatButton.addEventListener("click", repeatSession);
   newButton.addEventListener("click", newSession);
-
-  // Check network status and update cache when online
-  window.addEventListener('online', () => {
-    console.log('App is online, updating cache');
-    cacheVideos();
+  
+  // Add event listener for video errors
+  video.addEventListener('error', () => {
+    console.error('Video error occurred');
+    gradientBackground.style.opacity = "1";
+    // Try to reload the video or show fallback
+    setTimeout(updateContent, 3000);
   });
 });
